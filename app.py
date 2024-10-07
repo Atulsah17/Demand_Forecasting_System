@@ -1,7 +1,7 @@
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
-from prophet import Prophet
+import statsmodels.api as sm
 import streamlit as st
 
 # -----------------------------
@@ -70,32 +70,37 @@ else:
         st.warning("Not enough data points for forecasting.")
     else:
         try:
-            st.write("Fitting Prophet model...")
+            st.write("Fitting ETS model...")
 
-            # Prepare data for Prophet
-            df_prophet = weekly_sales.reset_index().rename(columns={'InvoiceDate': 'ds', 'Quantity': 'y'})
+            # Apply ETS model from statsmodels
+            ets_model = sm.tsa.ExponentialSmoothing(
+                weekly_sales,
+                seasonal_periods=52,
+                trend='add',
+                seasonal='add',
+                initialization_method="estimated"
+            ).fit()
 
-            # Create and fit the model
-            model = Prophet()
-            model.fit(df_prophet)
+            # Forecast for the specified number of weeks
+            forecast_values = ets_model.forecast(weeks_to_forecast)
 
-            # Make a future dataframe for the forecast
-            future = model.make_future_dataframe(periods=weeks_to_forecast, freq='W')
-
-            # Forecast
-            forecast = model.predict(future)
-
-            # Extract forecasted values
-            forecast_values = forecast[['ds', 'yhat']].set_index('ds').iloc[-weeks_to_forecast:]
-
+            # Debugging Step: Check forecast values
             st.write("Forecast Values:")
             st.write(forecast_values)
+
+            # Create a forecast index
+            forecast_index = pd.date_range(start=weekly_sales.index[-1] + pd.Timedelta(days=1), periods=weeks_to_forecast, freq='W')
+            forecast_series = pd.Series(forecast_values, index=forecast_index)
+
+            # Debug: Check if forecast_series has data
+            st.write("Forecast Series:")
+            st.write(forecast_series)
 
             # Plot historical and forecasted data
             st.write(f"Historical and Forecasted Sales for Stock Code {stock_code}")
             plt.figure(figsize=(10, 6))
             plt.plot(weekly_sales, label="Historical Sales")
-            plt.plot(forecast_values['yhat'], label="Forecasted Sales", linestyle='--')
+            plt.plot(forecast_series, label="Forecasted Sales", linestyle='--')
             plt.xlabel("Date")
             plt.ylabel("Quantity Sold")
             plt.title(f"Sales Forecast for {stock_code}")
@@ -111,7 +116,7 @@ else:
                 return df.to_csv().encode('utf-8')  # Ensure index is included
 
             # Convert forecast data to CSV for download
-            forecast_df = pd.DataFrame(forecast_values, columns=['yhat'])
+            forecast_df = pd.DataFrame(forecast_series, columns=['Forecasted Quantity'])
 
             # Check if forecast_df has data before downloading
             if not forecast_df.empty:
@@ -124,6 +129,6 @@ else:
                 )
             else:
                 st.warning("Forecast data is empty. Unable to download CSV.")
-
+        
         except Exception as e:
             st.error(f"Error in forecasting: {str(e)}")
