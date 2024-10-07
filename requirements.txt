@@ -1,4 +1,4 @@
-numpy>=1.26.0
+numpy >= 1.16
 Cython>=0.29
 pandas==2.1.1
 streamlit==1.39.0
