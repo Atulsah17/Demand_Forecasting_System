@@ -70,14 +70,13 @@ else:
         st.warning("Not enough data points for forecasting.")
     else:
         try:
-            st.write("Fitting ETS model...")
+            st.write("Fitting ETS model (without seasonality)...")
 
-            # Apply ETS model from statsmodels
+            # Apply ETS model from statsmodels without seasonality
             ets_model = sm.tsa.ExponentialSmoothing(
                 weekly_sales,
-                seasonal_periods=52,
-                trend='add',
-                seasonal='add',
+                trend='add',  # Additive trend
+                seasonal=None,  # Disable seasonality
                 initialization_method="estimated"
             ).fit()
 
